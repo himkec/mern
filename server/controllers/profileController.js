@@ -1,8 +1,24 @@
 import User from '../models/User.js';
 
+// Get current user's profile
+export const getCurrentUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user profile', error: error.message });
+  }
+};
+
 // Get user profile by ID
 export const getUserProfile = async (req, res) => {
   try {
+    if (!req.params.userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
     const user = await User.findById(req.params.userId).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -22,7 +38,7 @@ export const updateProfile = async (req, res) => {
     if (username) {
       const existingUser = await User.findOne({ 
         username, 
-        _id: { $ne: req.user.userId } 
+        _id: { $ne: req.user._id } 
       });
       
       if (existingUser) {
@@ -31,7 +47,7 @@ export const updateProfile = async (req, res) => {
     }
     
     const updatedUser = await User.findByIdAndUpdate(
-      req.user.userId,
+      req.user._id,
       { 
         $set: { 
           username, 
@@ -57,7 +73,7 @@ export const followUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    const currentUser = await User.findById(req.user.userId);
+    const currentUser = await User.findById(req.user._id);
     
     // Check if already following
     if (currentUser.following.includes(req.params.userId)) {
@@ -66,14 +82,14 @@ export const followUser = async (req, res) => {
     
     // Update current user's following list
     await User.findByIdAndUpdate(
-      req.user.userId,
+      req.user._id,
       { $push: { following: req.params.userId } }
     );
     
     // Update target user's followers list
     await User.findByIdAndUpdate(
       req.params.userId,
-      { $push: { followers: req.user.userId } }
+      { $push: { followers: req.user._id } }
     );
     
     res.json({ message: 'Successfully followed user' });
@@ -92,14 +108,14 @@ export const unfollowUser = async (req, res) => {
     
     // Update current user's following list
     await User.findByIdAndUpdate(
-      req.user.userId,
+      req.user._id,
       { $pull: { following: req.params.userId } }
     );
     
     // Update target user's followers list
     await User.findByIdAndUpdate(
       req.params.userId,
-      { $pull: { followers: req.user.userId } }
+      { $pull: { followers: req.user._id } }
     );
     
     res.json({ message: 'Successfully unfollowed user' });

@@ -15,11 +15,9 @@ import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import { getProfilePictureUrl } from '../../utils/imageUtils';
 import ProfileEdit from './ProfileEdit.tsx';
+import { User } from '../../types/user';
 
-interface UserProfile {
-  _id: string;
-  username: string;
-  email: string;
+interface UserProfile extends Omit<User, 'profilePicture' | 'bio' | 'location' | 'followers' | 'following' | 'createdAt'> {
   profilePicture: string;
   bio: string;
   location: string;
@@ -41,11 +39,17 @@ export default function Profile() {
     const fetchProfile = async () => {
       try {
         setLoading(true);
+        if (!userId) {
+          setError('User ID is required');
+          return;
+        }
+        console.log('Fetching profile for userId:', userId);
         const response = await axios.get(`http://localhost:5001/api/profile/${userId}`);
+        console.log('Profile data:', response.data);
         setProfile(response.data);
         
         // Check if current user is following this profile
-        if (currentUser && currentUser.id !== userId && userId) {
+        if (currentUser && currentUser._id !== userId) {
           setIsFollowing(currentUser.following?.includes(userId) || false);
         }
       } catch (err) {
@@ -58,8 +62,22 @@ export default function Profile() {
     fetchProfile();
   }, [userId, currentUser]);
 
+  // Set isEditing to true by default for own profile
+  useEffect(() => {
+    if (profile && currentUser) {
+      console.log('Current user:', currentUser);
+      console.log('Profile:', profile);
+      const isOwnProfile = currentUser._id === profile._id;
+      console.log('Is own profile:', isOwnProfile);
+      setIsEditing(isOwnProfile);
+    }
+  }, [profile, currentUser]);
+
   const handleFollow = async () => {
     try {
+      // Add a small delay to prevent rate limiting
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       if (isFollowing) {
         await axios.post(
           `http://localhost:5001/api/profile/unfollow/${userId}`,
@@ -112,12 +130,13 @@ export default function Profile() {
     );
   }
 
-  const isOwnProfile = currentUser && currentUser.id === profile._id;
+  const isOwnProfile = currentUser && currentUser._id === profile._id;
+  console.log('Final isOwnProfile check:', isOwnProfile);
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
-        {isEditing ? (
+        {isOwnProfile ? (
           <ProfileEdit 
             profile={profile} 
             onUpdate={handleProfileUpdate} 
@@ -175,7 +194,7 @@ export default function Profile() {
               <Typography variant="h6" gutterBottom>
                 About
               </Typography>
-              <Typography variant="body1">
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
                 {profile.bio || "No bio provided"}
               </Typography>
             </Box>

@@ -3,7 +3,8 @@ import {
   getUserProfile, 
   updateProfile, 
   followUser, 
-  unfollowUser 
+  unfollowUser,
+  getCurrentUserProfile 
 } from '../controllers/profileController.js';
 import { auth } from '../middleware/auth.js';
 
@@ -13,6 +14,7 @@ const router = express.Router();
 router.get('/:userId', getUserProfile);
 
 // Protected routes
+router.get('/', auth, getCurrentUserProfile);
 router.put('/update', auth, updateProfile);
 router.post('/follow/:userId', auth, followUser);
 router.post('/unfollow/:userId', auth, unfollowUser);

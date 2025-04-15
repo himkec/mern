@@ -1,19 +1,21 @@
-import { useState } from 'react';
+import { useState, FormEvent, ChangeEvent } from 'react';
 import {
   Box,
   Typography,
   TextField,
   Button,
   Avatar,
-  Alert,
-  Grid
+  Alert
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import { getProfilePictureUrl } from '../../utils/imageUtils';
+import { useNavigate } from 'react-router-dom';
 
 interface UserProfile {
   _id: string;
+  id?: string;
   username: string;
   email: string;
   profilePicture: string;
@@ -32,6 +34,7 @@ interface ProfileEditProps {
 
 export default function ProfileEdit({ profile, onUpdate, onCancel }: ProfileEditProps) {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState(profile.username);
   const [bio, setBio] = useState(profile.bio || '');
   const [location, setLocation] = useState(profile.location || '');
@@ -39,12 +42,17 @@ export default function ProfileEdit({ profile, onUpdate, onCancel }: ProfileEdit
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       setLoading(true);
+      setError('');
+      
+      // Add a small delay to prevent rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const response = await axios.put(
-        `/api/users/${profile._id}`,
+        `http://localhost:5001/api/profile/update`,
         {
           username,
           bio,
@@ -55,9 +63,18 @@ export default function ProfileEdit({ profile, onUpdate, onCancel }: ProfileEdit
           headers: { Authorization: `Bearer ${token}` }
         }
       );
+      
+      // Call onUpdate with the updated profile data
       onUpdate(response.data);
+      
+      // Navigate to home page
+      navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error updating profile');
+      if (err.response?.status === 429) {
+        setError('Too many requests. Please wait a moment and try again.');
+      } else {
+        setError(err.response?.data?.message || 'Error updating profile');
+      }
     } finally {
       setLoading(false);
     }
@@ -85,50 +102,50 @@ export default function ProfileEdit({ profile, onUpdate, onCancel }: ProfileEdit
             target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&size=150`;
           }}
         />
-        <TextField
-          fullWidth
-          label="Profile Picture URL"
-          value={profilePicture}
-          onChange={(e) => setProfilePicture(e.target.value)}
-          placeholder="https://example.com/image.jpg"
-        />
+        <Box sx={{ flexGrow: 1 }}>
+          <TextField
+            fullWidth
+            label="Profile Picture URL"
+            value={profilePicture}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setProfilePicture(e.target.value)}
+            placeholder="https://example.com/image.jpg"
+            helperText="Enter a URL for your profile picture"
+          />
+        </Box>
       </Box>
       
-      <Grid container spacing={2}>
-        <Grid size={12}>
-          <TextField
-            required
-            fullWidth
-            id="username"
-            label="Username"
-            name="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        </Grid>
-        <Grid size={12}>
-          <TextField
-            fullWidth
-            id="bio"
-            label="Bio"
-            name="bio"
-            multiline
-            rows={4}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-          />
-        </Grid>
-        <Grid size={12}>
-          <TextField
-            fullWidth
-            id="location"
-            label="Location"
-            name="location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
-        </Grid>
-      </Grid>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <TextField
+          required
+          fullWidth
+          id="username"
+          label="Username"
+          name="username"
+          value={username}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+        />
+        <TextField
+          fullWidth
+          id="bio"
+          label="About Me"
+          name="bio"
+          multiline
+          rows={4}
+          value={bio}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setBio(e.target.value)}
+          placeholder="Tell us about yourself..."
+          helperText="Write a brief description about yourself"
+        />
+        <TextField
+          fullWidth
+          id="location"
+          label="Location"
+          name="location"
+          value={location}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setLocation(e.target.value)}
+          placeholder="Where are you based?"
+        />
+      </Box>
       
       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
         <Button 

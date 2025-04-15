@@ -1,15 +1,23 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import axios from 'axios';
-import ProfileEdit from './ProfileEdit';
-import { AuthProvider } from '../../context/AuthContext';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
+import ProfileEdit from './ProfileEdit';
+import axios from 'axios';
+import { AuthProvider } from '../../context/AuthContext';
 
 // Mock axios
-jest.mock('axios');
+vi.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-const theme = createTheme();
+// Mock useNavigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 describe('ProfileEdit Component', () => {
   const mockProfile = {
@@ -24,97 +32,122 @@ describe('ProfileEdit Component', () => {
     createdAt: '2024-01-01'
   };
 
-  const mockOnUpdate = jest.fn();
-  const mockOnCancel = jest.fn();
-
-  const renderProfileEdit = () => {
-    render(
-      <ThemeProvider theme={theme}>
-        <BrowserRouter>
-          <AuthProvider>
-            <ProfileEdit
-              profile={mockProfile}
-              onUpdate={mockOnUpdate}
-              onCancel={mockOnCancel}
-            />
-          </AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
-    );
-  };
+  const mockOnUpdate = vi.fn();
+  const mockOnCancel = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    localStorage.setItem('token', 'fake-token');
+    vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    localStorage.clear();
+  it('renders the form with initial values', () => {
+    render(
+      <BrowserRouter>
+        <AuthProvider>
+          <ProfileEdit
+            profile={mockProfile}
+            onUpdate={mockOnUpdate}
+            onCancel={mockOnCancel}
+          />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+
+    expect(screen.getByDisplayValue(mockProfile.username)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(mockProfile.bio)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(mockProfile.location)).toBeInTheDocument();
+    expect(screen.getByDisplayValue(mockProfile.profilePicture)).toBeInTheDocument();
   });
 
-  it('renders profile edit form with initial values', () => {
-    renderProfileEdit();
-    
-    expect(screen.getByLabelText(/username/i)).toHaveValue(mockProfile.username);
-    expect(screen.getByLabelText(/bio/i)).toHaveValue(mockProfile.bio);
-    expect(screen.getByLabelText(/location/i)).toHaveValue(mockProfile.location);
-  });
+  it('handles form submission successfully', async () => {
+    mockedAxios.put.mockResolvedValueOnce({ data: mockProfile });
 
-  it('handles successful profile update', async () => {
-    const updatedProfile = {
-      ...mockProfile,
-      username: 'newusername',
-      bio: 'New bio',
-      location: 'New Location'
-    };
+    render(
+      <BrowserRouter>
+        <AuthProvider>
+          <ProfileEdit
+            profile={mockProfile}
+            onUpdate={mockOnUpdate}
+            onCancel={mockOnCancel}
+          />
+        </AuthProvider>
+      </BrowserRouter>
+    );
 
-    mockedAxios.put.mockResolvedValueOnce({ data: updatedProfile });
-
-    renderProfileEdit();
-
-    fireEvent.change(screen.getByLabelText(/username/i), {
-      target: { value: updatedProfile.username }
-    });
-    fireEvent.change(screen.getByLabelText(/bio/i), {
-      target: { value: updatedProfile.bio }
-    });
-    fireEvent.change(screen.getByLabelText(/location/i), {
-      target: { value: updatedProfile.location }
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    const submitButton = screen.getByRole('button', { name: /save/i });
+    fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(mockedAxios.put).toHaveBeenCalledWith(
-        `/api/users/${mockProfile._id}`,
-        expect.objectContaining({
-          username: updatedProfile.username,
-          bio: updatedProfile.bio,
-          location: updatedProfile.location
-        }),
+        expect.stringContaining('/api/profile/'),
         expect.any(Object)
       );
-      expect(mockOnUpdate).toHaveBeenCalledWith(updatedProfile);
+      expect(mockOnUpdate).toHaveBeenCalledWith(mockProfile);
+      expect(mockNavigate).toHaveBeenCalledWith('/');
     });
   });
 
-  it('handles profile update error', async () => {
-    const error = { response: { data: { message: 'Error updating profile' } } };
-    mockedAxios.put.mockRejectedValueOnce(error);
+  it('handles form submission error', async () => {
+    const errorMessage = 'Update failed';
+    mockedAxios.put.mockRejectedValueOnce({ response: { data: { message: errorMessage } } });
 
-    renderProfileEdit();
+    render(
+      <BrowserRouter>
+        <AuthProvider>
+          <ProfileEdit
+            profile={mockProfile}
+            onUpdate={mockOnUpdate}
+            onCancel={mockOnCancel}
+          />
+        </AuthProvider>
+      </BrowserRouter>
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    const submitButton = screen.getByRole('button', { name: /save/i });
+    fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/error updating profile/i)).toBeInTheDocument();
+      expect(screen.getByText(errorMessage)).toBeInTheDocument();
     });
   });
 
-  it('calls onCancel when cancel button is clicked', () => {
-    renderProfileEdit();
-    
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+  it('handles cancel button click', () => {
+    render(
+      <BrowserRouter>
+        <AuthProvider>
+          <ProfileEdit
+            profile={mockProfile}
+            onUpdate={mockOnUpdate}
+            onCancel={mockOnCancel}
+          />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
     expect(mockOnCancel).toHaveBeenCalled();
+  });
+
+  it('shows loading state during submission', async () => {
+    mockedAxios.put.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+
+    render(
+      <BrowserRouter>
+        <AuthProvider>
+          <ProfileEdit
+            profile={mockProfile}
+            onUpdate={mockOnUpdate}
+            onCancel={mockOnCancel}
+          />
+        </AuthProvider>
+      </BrowserRouter>
+    );
+
+    const submitButton = screen.getByRole('button', { name: /save/i });
+    fireEvent.click(submitButton);
+
+    expect(submitButton).toBeDisabled();
+    expect(screen.getByText(/saving/i)).toBeInTheDocument();
   });
 }); 
