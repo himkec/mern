@@ -6,6 +6,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth.js';
+import profileRoutes from './routes/profile.js';
 
 dotenv.config();
 
@@ -46,6 +48,10 @@ connectDB();
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to MERN Stack API' });
 });
+
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
