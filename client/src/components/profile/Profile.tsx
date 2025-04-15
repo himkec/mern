@@ -17,7 +17,7 @@ import { getProfilePictureUrl } from '../../utils/imageUtils';
 import ProfileEdit from './ProfileEdit.tsx';
 import { User } from '../../types/user';
 
-interface UserProfile extends Omit<User, 'profilePicture' | 'bio' | 'location' | 'followers' | 'following' | 'createdAt'> {
+interface UserProfile extends User {
   profilePicture: string;
   bio: string;
   location: string;
@@ -43,14 +43,13 @@ export default function Profile() {
           setError('User ID is required');
           return;
         }
-        console.log('Fetching profile for userId:', userId);
         const response = await axios.get(`http://localhost:5001/api/profile/${userId}`);
-        console.log('Profile data:', response.data);
         setProfile(response.data);
         
         // Check if current user is following this profile
-        if (currentUser && currentUser._id !== userId) {
-          setIsFollowing(currentUser.following?.includes(userId) || false);
+        if (currentUser?._id && currentUser._id !== userId) {
+          const following = currentUser.following || [];
+          setIsFollowing(following.includes(userId));
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error fetching profile');
@@ -64,19 +63,15 @@ export default function Profile() {
 
   // Set isEditing to true by default for own profile
   useEffect(() => {
-    if (profile && currentUser) {
-      console.log('Current user:', currentUser);
-      console.log('Profile:', profile);
+    if (profile && currentUser?._id) {
       const isOwnProfile = currentUser._id === profile._id;
-      console.log('Is own profile:', isOwnProfile);
       setIsEditing(isOwnProfile);
     }
   }, [profile, currentUser]);
 
   const handleFollow = async () => {
     try {
-      // Add a small delay to prevent rate limiting
-      await new Promise(resolve => setTimeout(resolve, 300));
+      if (!userId || !token) return;
       
       if (isFollowing) {
         await axios.post(
@@ -91,6 +86,8 @@ export default function Profile() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
       }
+      
+      // Update local state
       setIsFollowing(!isFollowing);
       
       // Refresh profile data
@@ -130,8 +127,7 @@ export default function Profile() {
     );
   }
 
-  const isOwnProfile = currentUser && currentUser._id === profile._id;
-  console.log('Final isOwnProfile check:', isOwnProfile);
+  const isOwnProfile = currentUser?._id === profile._id;
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
@@ -173,7 +169,6 @@ export default function Profile() {
               {isOwnProfile ? (
                 <Button
                   variant="outlined"
-                  startIcon={<Edit />}
                   onClick={() => setIsEditing(true)}
                 >
                   Edit Profile

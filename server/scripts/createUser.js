@@ -1,30 +1,30 @@
 import mongoose from 'mongoose';
-import User from '../models/User.js';
 import dotenv from 'dotenv';
+import User from '../models/User.js';
 
 dotenv.config();
 
 const createUser = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
-
-    const user = new User({
-      username: 'admin02',
-      email: 'admin02@example.com',
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/mern_app');
+    
+    const userData = {
+      username: 'findme',
+      email: 'findme@example.com',
       password: 'qwerty12345'
-    });
+    };
 
-    await user.save();
+    const user = await User.create(userData);
     console.log('User created successfully:', {
       id: user._id,
-      email: user.email,
-      username: user.username
+      username: user.username,
+      email: user.email
     });
 
     await mongoose.disconnect();
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error creating user:', error);
+    process.exit(1);
   }
 };
 

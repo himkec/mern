@@ -70,7 +70,7 @@ const Post: React.FC<PostProps> = ({ post, onDelete, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
   const [isLiked, setIsLiked] = useState(
-    post.likes.some((like) => like._id === user?.id)
+    post.likes.some((like) => like._id === user?._id)
   );
 
   const handleLike = async () => {
@@ -159,7 +159,7 @@ const Post: React.FC<PostProps> = ({ post, onDelete, onUpdate }) => {
     }
   };
 
-  const isAuthor = user?.id === post.author._id;
+  const isAuthor = user?._id === post.author._id;
 
   return (
     <Card sx={{ mb: 2 }}>
@@ -326,7 +326,7 @@ const Post: React.FC<PostProps> = ({ post, onDelete, onUpdate }) => {
                     })}
                   </Typography>
                 </Box>
-                {user?.id === comment.user._id && (
+                {user?._id === comment.user._id && (
                   <IconButton
                     size="small"
                     onClick={() => handleDeleteComment(comment._id)}

@@ -1,10 +1,6 @@
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Create a new post
 export const createPost = async (req, res) => {
@@ -161,14 +157,14 @@ export const deletePost = async (req, res) => {
 
     // Delete media files
     for (const media of post.media) {
-      const filePath = path.join(__dirname, '..', media.url);
+      const filePath = path.join(process.cwd(), media.url);
       // You might want to use fs.unlink to delete the file
-      // fs.unlink(filePath, (err) => { if (err) console.error(err); });
     }
 
-    await post.remove();
+    await Post.findByIdAndDelete(req.params.id);
     res.json({ message: 'Post deleted successfully' });
   } catch (error) {
+    console.error('Error deleting post:', error);
     res.status(500).json({ message: error.message });
   }
 };

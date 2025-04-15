@@ -43,4 +43,12 @@ coverage/
 
 # Temporary files
 *.local
-.cache/ 
+.cache/
+
+# Upload directories
+server/uploads/
+server/uploads/*
+
+# Upload directories
+server/upload/
+server/upload/* 
