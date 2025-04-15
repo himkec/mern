@@ -32,9 +32,9 @@ export default function Login() {
       setLoading(true);
       await login(email, password);
       navigate('/');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
     }

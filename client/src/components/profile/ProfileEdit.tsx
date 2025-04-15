@@ -5,8 +5,8 @@ import {
   TextField,
   Button,
   Avatar,
-  Grid,
-  Alert
+  Alert,
+  Grid
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
@@ -41,12 +41,10 @@ export default function ProfileEdit({ profile, onUpdate, onCancel }: ProfileEdit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
     try {
+      setLoading(true);
       const response = await axios.put(
-        'http://localhost:5001/api/profile/update',
+        `/api/users/${profile._id}`,
         {
           username,
           bio,
@@ -57,10 +55,9 @@ export default function ProfileEdit({ profile, onUpdate, onCancel }: ProfileEdit
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      
       onUpdate(response.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error updating profile');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error updating profile');
     } finally {
       setLoading(false);
     }
@@ -98,33 +95,37 @@ export default function ProfileEdit({ profile, onUpdate, onCancel }: ProfileEdit
       </Box>
       
       <Grid container spacing={2}>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <TextField
             required
             fullWidth
+            id="username"
             label="Username"
+            name="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <TextField
             fullWidth
-            label="Location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="City, Country"
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
+            id="bio"
+            label="Bio"
+            name="bio"
             multiline
             rows={4}
-            label="Bio"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            placeholder="Tell us about yourself"
+          />
+        </Grid>
+        <Grid size={12}>
+          <TextField
+            fullWidth
+            id="location"
+            label="Location"
+            name="location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
           />
         </Grid>
       </Grid>
